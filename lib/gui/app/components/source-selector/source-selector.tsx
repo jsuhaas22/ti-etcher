@@ -385,7 +385,7 @@ export class SourceSelector extends React.Component<
 	}
 
 	private selectSource(
-		selected: string | DrivelistDrive,
+		selected: string,
 		SourceType: Source,
 		auth?: Authentication,
 	): { promise: Promise<void>; cancel: () => void } {
@@ -394,31 +394,8 @@ export class SourceSelector extends React.Component<
 				// noop
 			},
 			promise: (async () => {
-				const sourcePath = isString(selected) ? selected : selected.device;
 				let metadata: SourceMetadata | undefined;
 				if (isString(selected)) {
-					if (
-						SourceType === 'Http' &&
-						!isURL(this.normalizeImagePath(selected))
-					) {
-						this.handleError(
-							i18next.t('source.unsupportedProtocol'),
-							selected,
-							messages.error.unsupportedProtocol(),
-						);
-						return;
-					}
-
-					if (supportedFormats.looksLikeWindowsImage(selected)) {
-						analytics.logEvent('Possibly Windows image', { image: selected });
-						this.setState({
-							warning: {
-								message: messages.warning.looksLikeWindowsImage(),
-								title: i18next.t('source.windowsImage'),
-							},
-						});
-					}
-
 					try {
 						// this will send an event down the ipcMain asking for metadata
 						// we'll get the response through an event
@@ -445,29 +422,11 @@ export class SourceSelector extends React.Component<
 					} catch (error: any) {
 						this.handleError(
 							i18next.t('source.errorOpen'),
-							sourcePath,
-							messages.error.openSource(sourcePath, error.message),
+							selected,
+							messages.error.openSource(selected, error.message),
 							error,
 						);
 					}
-				} else {
-					if (selected.partitionTableType === null) {
-						analytics.logEvent('Missing partition table', { selected });
-						this.setState({
-							warning: {
-								message: messages.warning.driveMissingPartitionTable(),
-								title: i18next.t('source.partitionTable'),
-							},
-						});
-					}
-					metadata = {
-						path: selected.device,
-						displayName: selected.displayName,
-						description: selected.displayName,
-						size: selected.size as SourceMetadata['size'],
-						SourceType: 'BlockDevice',
-						drive: selected,
-					};
 				}
 
 				if (metadata !== undefined) {
@@ -654,31 +613,11 @@ export class SourceSelector extends React.Component<
 							<FlowSelector
 								disabled={this.state.imageSelectorOpen}
 								primary={this.state.defaultFlowActive}
-								key="Flash from file"
+								key="Select tar file"
 								flow={{
 									onClick: () => this.openImageSelector(),
-									label: i18next.t('source.fromFile'),
+									label: i18next.t('source.selectTar'),
 									icon: <FileSvg height="1em" fill="currentColor" />,
-								}}
-								onMouseEnter={() => this.setDefaultFlowActive(false)}
-								onMouseLeave={() => this.setDefaultFlowActive(true)}
-							/>
-							<FlowSelector
-								key="Flash from URL"
-								flow={{
-									onClick: () => this.openURLSelector(),
-									label: i18next.t('source.fromURL'),
-									icon: <LinkSvg height="1em" fill="currentColor" />,
-								}}
-								onMouseEnter={() => this.setDefaultFlowActive(false)}
-								onMouseLeave={() => this.setDefaultFlowActive(true)}
-							/>
-							<FlowSelector
-								key="Clone drive"
-								flow={{
-									onClick: () => this.openDriveSelector(),
-									label: i18next.t('source.clone'),
-									icon: <CopySvg height="1em" fill="currentColor" />,
 								}}
 								onMouseEnter={() => this.setDefaultFlowActive(false)}
 								onMouseLeave={() => this.setDefaultFlowActive(true)}

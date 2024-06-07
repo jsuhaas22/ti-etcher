@@ -83,7 +83,7 @@ const translation = {
 			windowsImage: 'Possible Windows image detected',
 			partitionTable: 'Missing partition table',
 			errorOpen: 'Error opening source',
-			fromFile: 'Flash from file',
+			selectTar: 'Select tar file',
 			fromURL: 'Flash from URL',
 			clone: 'Clone drive',
 			image: 'Image',

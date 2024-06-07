@@ -94,7 +94,7 @@ const translation = {
 			windowsImage: '这可能是 Windows 系统镜像',
 			partitionTable: '找不到分区表',
 			errorOpen: '打开源镜像时出错',
-			fromFile: '从文件烧录',
+			selectTar: '从文件烧录',
 			fromURL: '从在线地址烧录',
 			clone: '克隆磁盘',
 			image: '镜像信息',
