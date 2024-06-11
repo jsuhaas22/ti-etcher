@@ -166,7 +166,8 @@ export class MainPage extends React.Component<
 
 	updatePlatformsList = (platformList: string[]) => {
 		this.setState({
-			platforms: platformList
+			platforms: platformList,
+			hasImage: true
 		});
 	}
 
@@ -178,6 +179,7 @@ export class MainPage extends React.Component<
 		const notFlashingOrSplitView =
 			!this.state.isFlashing || !this.state.isWebviewShowing;
 		return (
+			<>
 			<Flex
 				m={`110px ${this.state.isWebviewShowing ? 35 : 55}px`}
 				justifyContent="space-between"
@@ -188,11 +190,7 @@ export class MainPage extends React.Component<
 						<Flex>
 							<StepBorder disabled={shouldDriveStepBeDisabled} left />
 						</Flex>
-						<TargetSelector
-							disabled={shouldDriveStepBeDisabled}
-							hasDrive={this.state.hasDrive}
-							flashing={this.state.isFlashing}
-						/>
+						<ImageSelectorDropdown disabled={!this.state.hasImage} platformsList={this.state.platforms} onSelect={() => null} />
 						<Flex>
 							<StepBorder disabled={shouldFlashStepBeDisabled} right />
 						</Flex>
@@ -245,23 +243,29 @@ export class MainPage extends React.Component<
 						}}
 					/>
 				)}
-
-				{/* <FlashStep
-					width={this.state.isWebviewShowing ? '220px' : '200px'}
-					goToSuccess={() => this.setState({ current: 'success' })}
-					shouldFlashStepBeDisabled={shouldFlashStepBeDisabled}
-					isFlashing={this.state.isFlashing}
-					step={state.type}
-					percentage={state.percentage}
-					position={state.position}
-					failed={state.failed}
-					speed={state.speed}
-					eta={state.eta}
-					style={{ zIndex: 1 }}
-				/> */
-				<ImageSelectorDropdown disabled={false} platformsList={this.state.platforms} onSelect={() => null} />
-				}
+				<TargetSelector
+							disabled={shouldDriveStepBeDisabled}
+							hasDrive={this.state.hasDrive}
+							flashing={this.state.isFlashing}
+						/>
 			</Flex>
+
+			<Flex alignItems="center" justifyContent="center">
+				<FlashStep
+						width={this.state.isWebviewShowing ? '220px' : '200px'}
+						goToSuccess={() => this.setState({ current: 'success' })}
+						shouldFlashStepBeDisabled={shouldFlashStepBeDisabled}
+						isFlashing={this.state.isFlashing}
+						step={state.type}
+						percentage={state.percentage}
+						position={state.position}
+						failed={state.failed}
+						speed={state.speed}
+						eta={state.eta}
+						style={{ zIndex: 1 }}
+					/>
+			</Flex>
+			</>
 		);
 	}
 

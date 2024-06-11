@@ -261,13 +261,6 @@ export class FlashStep extends React.PureComponent<
 					width={this.props.width}
 					style={this.props.style}
 				>
-					<FlashSvg
-						width="40px"
-						className={this.props.shouldFlashStepBeDisabled ? 'disabled' : ''}
-						style={{
-							margin: '0 auto',
-						}}
-					/>
 
 					<ProgressButton
 						type={this.props.step}
@@ -277,7 +270,7 @@ export class FlashStep extends React.PureComponent<
 						disabled={this.props.shouldFlashStepBeDisabled}
 						cancel={imageWriter.cancel}
 						warning={this.hasListWarnings(selection.getSelectedDrives())}
-						callback={() => this.tryFlash()}
+						callback={() => null}
 					/>
 
 					{!_.isNil(this.props.speed) &&

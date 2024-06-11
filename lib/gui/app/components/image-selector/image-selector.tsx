@@ -40,7 +40,7 @@ export class ImageSelectorDropdown extends React.PureComponent<ImageSelectorDrop
 						}}
 					/>
 				
-				<DropDownButton id='dropdownbutton-imgselector' primary={true} border={true} label="Choose Platform" joined={true} alignRight={true}>
+				<DropDownButton id='dropdownbutton-imgselector' primary={true} border={true} label="Choose Platform" joined={true} alignRight={true} disabled={this.props.disabled}>
 				{platformsList.map((platform, index) => (
 								<Dropdown.Item key={index} onClick={() => this.handleSelect(platform)}>
 									{platform}
