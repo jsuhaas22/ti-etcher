@@ -28,6 +28,8 @@ import prettyBytes from 'pretty-bytes';
 import * as React from 'react';
 // import { requestMetadata } from '../../app';
 import * as fs from 'fs';
+import * as zlib from 'zlib';
+import * as tar from 'tar-stream';
 
 import type { ButtonProps } from 'rendition';
 import {
@@ -139,6 +141,43 @@ function getState() {
 
 function isString(value: any): value is string {
 	return typeof value === 'string';
+}
+
+async function openTarGzReadJSON(tarFilePath: string) {
+	return new Promise<string[]>((resolve, reject) => {
+		const extract = tar.extract();
+		let contents = '';
+
+		extract.on('entry', (header, stream, next) => {
+			if (header.name.endsWith('platform.json')) {
+				stream.on('data', chunk => {
+					contents += chunk.toString();
+				});
+
+				stream.on('end', () => {
+					next();
+				});
+			} else {
+				stream.resume();
+				next();
+			}
+		});
+
+		extract.on('finish', () => {
+			if (contents) {
+				try {
+					const platformList: string[] = JSON.parse(contents);
+					resolve(platformList);
+				} catch(err: any) {
+					reject(new Error('Error parsing JSON content: ', err.message));
+				}
+			} else {
+				reject(new Error('platform.json not found'));
+			}
+		});
+
+		fs.createReadStream(tarFilePath).pipe(zlib.createGunzip()).pipe(extract);
+	});
 }
 
 const URLSelector = ({
@@ -397,12 +436,11 @@ export class SourceSelector extends React.Component<
 			},
 			promise: (async () => {
 				// let metadata: SourceMetadata | undefined;
-				if (selected.endsWith('.json')) {
+				if (selected.endsWith('.tar.gz')) {
 					try {
-						const data = fs.readFileSync(selected, 'utf-8');
-						let platformsList: string[] = JSON.parse(data);
-
-						this.props.toUpdate(platformsList);
+						openTarGzReadJSON(selected).then(platformList => {
+							this.props.toUpdate(platformList);
+						});
 
 						// this will send an event down the ipcMain asking for metadata
 						// we'll get the response through an event
