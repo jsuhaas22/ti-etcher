@@ -47,6 +47,8 @@ import { FlashStep } from './Flash';
 import EtcherSvg from '../../../assets/etcher.svg';
 import { SafeWebview } from '../../components/safe-webview/safe-webview';
 
+import { ImageSelectorDropdown } from '../../components/image-selector/image-selector';
+
 const Icon = styled(BaseIcon)`
 	margin-right: 20px;
 `;
@@ -113,6 +115,7 @@ interface MainPageState {
 	isWebviewShowing: boolean;
 	hideSettings: boolean;
 	featuredProjectURL?: string;
+	platforms: string[];
 }
 
 export class MainPage extends React.Component<
@@ -126,6 +129,7 @@ export class MainPage extends React.Component<
 			isWebviewShowing: false,
 			hideSettings: true,
 			...this.stateHelper(),
+			platforms: [],
 		};
 	}
 
@@ -160,6 +164,12 @@ export class MainPage extends React.Component<
 		this.setState({ featuredProjectURL: await this.getFeaturedProjectURL() });
 	}
 
+	updatePlatformsList = (platformList: string[]) => {
+		this.setState({
+			platforms: platformList
+		});
+	}
+
 	private renderMain() {
 		const state = flashState.getFlashState();
 		const shouldDriveStepBeDisabled = !this.state.hasImage;
@@ -174,7 +184,7 @@ export class MainPage extends React.Component<
 			>
 				{notFlashingOrSplitView && (
 					<>
-						<SourceSelector flashing={this.state.isFlashing} />
+						<SourceSelector flashing={this.state.isFlashing} toUpdate={this.updatePlatformsList} />
 						<Flex>
 							<StepBorder disabled={shouldDriveStepBeDisabled} left />
 						</Flex>
@@ -236,7 +246,7 @@ export class MainPage extends React.Component<
 					/>
 				)}
 
-				<FlashStep
+				{/* <FlashStep
 					width={this.state.isWebviewShowing ? '220px' : '200px'}
 					goToSuccess={() => this.setState({ current: 'success' })}
 					shouldFlashStepBeDisabled={shouldFlashStepBeDisabled}
@@ -248,7 +258,9 @@ export class MainPage extends React.Component<
 					speed={state.speed}
 					eta={state.eta}
 					style={{ zIndex: 1 }}
-				/>
+				/> */
+				<ImageSelectorDropdown disabled={false} platformsList={this.state.platforms} onSelect={() => null} />
+				}
 			</Flex>
 		);
 	}

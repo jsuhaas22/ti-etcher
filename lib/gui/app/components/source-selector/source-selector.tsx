@@ -26,7 +26,8 @@ import { uniqBy, isNil } from 'lodash';
 import * as path from 'path';
 import prettyBytes from 'pretty-bytes';
 import * as React from 'react';
-import { requestMetadata } from '../../app';
+// import { requestMetadata } from '../../app';
+import * as fs from 'fs';
 
 import type { ButtonProps } from 'rendition';
 import {
@@ -64,7 +65,7 @@ import { SVGIcon } from '../svg-icon/svg-icon';
 import ImageSvg from '../../../assets/image.svg';
 import SrcSvg from '../../../assets/src.svg';
 import { DriveSelector } from '../drive-selector/drive-selector';
-import type { DrivelistDrive } from '../../../../shared/drive-constraints';
+// import type { DrivelistDrive } from '../../../../shared/drive-constraints';
 import { isJson } from '../../../../shared/utils';
 import type {
 	SourceMetadata,
@@ -308,6 +309,7 @@ const FlowSelector = styled(
 
 interface SourceSelectorProps {
 	flashing: boolean;
+	toUpdate: (platformLists: string[]) => void;
 }
 
 interface SourceSelectorState {
@@ -386,39 +388,44 @@ export class SourceSelector extends React.Component<
 
 	private selectSource(
 		selected: string,
-		SourceType: Source,
-		auth?: Authentication,
+		// SourceType: Source,
+		// auth?: Authentication,
 	): { promise: Promise<void>; cancel: () => void } {
 		return {
 			cancel: () => {
 				// noop
 			},
 			promise: (async () => {
-				let metadata: SourceMetadata | undefined;
-				if (isString(selected)) {
+				// let metadata: SourceMetadata | undefined;
+				if (selected.endsWith('.json')) {
 					try {
+						const data = fs.readFileSync(selected, 'utf-8');
+						let platformsList: string[] = JSON.parse(data);
+
+						this.props.toUpdate(platformsList);
+
 						// this will send an event down the ipcMain asking for metadata
 						// we'll get the response through an event
 
 						// FIXME: This is a poor man wait while loading to prevent a potential race condition without completely blocking the interface
 						// This should be addressed when refactoring the GUI
-						let retriesLeft = 10;
-						while (requestMetadata === undefined && retriesLeft > 0) {
-							await new Promise((resolve) => setTimeout(resolve, 1050)); // api is trying to connect every 1000, this is offset to make sure we fall between retries
-							retriesLeft--;
-						}
+						// let retriesLeft = 10;
+						// while (requestMetadata === undefined && retriesLeft > 0) {
+						// 	await new Promise((resolve) => setTimeout(resolve, 1050)); // api is trying to connect every 1000, this is offset to make sure we fall between retries
+						// 	retriesLeft--;
+						// }
 
-						metadata = await requestMetadata({ selected, SourceType, auth });
+						// metadata = await requestMetadata({ selected, SourceType, auth });
 
-						if (!metadata?.hasMBR && this.state.warning === null) {
-							analytics.logEvent('Missing partition table', { metadata });
-							this.setState({
-								warning: {
-									message: messages.warning.missingPartitionTable(),
-									title: i18next.t('source.partitionTable'),
-								},
-							});
-						}
+						// if (!metadata?.hasMBR && this.state.warning === null) {
+						// 	analytics.logEvent('Missing partition table', { metadata });
+						// 	this.setState({
+						// 		warning: {
+						// 			message: messages.warning.missingPartitionTable(),
+						// 			title: i18next.t('source.partitionTable'),
+						// 		},
+						// 	});
+						// }
 					} catch (error: any) {
 						this.handleError(
 							i18next.t('source.errorOpen'),
@@ -427,22 +434,30 @@ export class SourceSelector extends React.Component<
 							error,
 						);
 					}
-				}
-
-				if (metadata !== undefined) {
-					metadata.auth = auth;
-					metadata.SourceType = SourceType;
-					selectionState.selectSource(metadata);
-					analytics.logEvent('Select image', {
-						// An easy way so we can quickly identify if we're making use of
-						// certain features without printing pages of text to DevTools.
-						image: {
-							...metadata,
-							logo: Boolean(metadata.logo),
-							blockMap: Boolean(metadata.blockMap),
+				} else {
+					analytics.logEvent('Not a tar.xz file', { selected });
+					this.setState({
+						warning: {
+							message: messages.warning.driveMissingPartitionTable(),
+							title: i18next.t('source.partitionTable'),
 						},
 					});
 				}
+
+				// if (metadata !== undefined) {
+				// 	metadata.auth = auth;
+				// 	metadata.SourceType = SourceType;
+				// 	selectionState.selectSource(metadata);
+				// 	analytics.logEvent('Select image', {
+				// 		// An easy way so we can quickly identify if we're making use of
+				// 		// certain features without printing pages of text to DevTools.
+				// 		image: {
+				// 			...metadata,
+				// 			logo: Boolean(metadata.logo),
+				// 			blockMap: Boolean(metadata.blockMap),
+				// 		},
+				// 	});
+				// }
 			})(),
 		};
 	}
