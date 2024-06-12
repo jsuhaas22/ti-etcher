@@ -116,6 +116,7 @@ interface MainPageState {
 	hideSettings: boolean;
 	featuredProjectURL?: string;
 	platforms: string[];
+	platform: string;
 }
 
 export class MainPage extends React.Component<
@@ -130,6 +131,7 @@ export class MainPage extends React.Component<
 			hideSettings: true,
 			...this.stateHelper(),
 			platforms: [],
+			platform: ''
 		};
 	}
 
@@ -171,9 +173,17 @@ export class MainPage extends React.Component<
 		});
 	}
 
+	updatePlatform = (plt: string) => {
+		this.setState({
+			platform: plt
+		});
+	}
+
 	private renderMain() {
 		const state = flashState.getFlashState();
-		const shouldDriveStepBeDisabled = !this.state.hasImage;
+		const shouldDriveStepBeDisabled =
+			!(this.state.hasImage &&
+				(this.state.platform !== undefined && this.state.platform !== ''));
 		const shouldFlashStepBeDisabled =
 			!this.state.hasImage || !this.state.hasDrive;
 		const notFlashingOrSplitView =
@@ -190,7 +200,7 @@ export class MainPage extends React.Component<
 						<Flex>
 							<StepBorder disabled={shouldDriveStepBeDisabled} left />
 						</Flex>
-						<ImageSelectorDropdown disabled={!this.state.hasImage} platformsList={this.state.platforms} onSelect={() => null} />
+						<ImageSelectorDropdown disabled={!this.state.hasImage} platformsList={this.state.platforms} onSelect={(plt: string) => this.updatePlatform(plt)} />
 						<Flex>
 							<StepBorder disabled={shouldFlashStepBeDisabled} right />
 						</Flex>
