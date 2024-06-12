@@ -349,6 +349,7 @@ const FlowSelector = styled(
 interface SourceSelectorProps {
 	flashing: boolean;
 	toUpdate: (platformLists: string[]) => void;
+	toClear: () => void;
 }
 
 interface SourceSelectorState {
@@ -362,6 +363,7 @@ interface SourceSelectorState {
 	defaultFlowActive: boolean;
 	imageSelectorOpen: boolean;
 	imageLoading: boolean;
+	isImageSelected: boolean;
 }
 
 export class SourceSelector extends React.Component<
@@ -381,6 +383,7 @@ export class SourceSelector extends React.Component<
 			defaultFlowActive: true,
 			imageSelectorOpen: false,
 			imageLoading: false,
+			isImageSelected: false
 		};
 
 		// Bind `this` since it's used in an event's callback
@@ -425,6 +428,14 @@ export class SourceSelector extends React.Component<
 		selectionState.deselectImage();
 	}
 
+	private handleCancel() {
+		this.props.toClear();
+		this.setState({
+			isImageSelected: false,
+			imageName: ''
+		});
+	}
+
 	private selectSource(
 		selected: string,
 		// SourceType: Source,
@@ -440,6 +451,10 @@ export class SourceSelector extends React.Component<
 					try {
 						openTarGzReadJSON(selected).then(platformList => {
 							this.props.toUpdate(platformList);
+						});
+						this.setState({
+							isImageSelected: true,
+							imageName: selected
 						});
 
 						// this will send an event down the ipcMain asking for metadata
@@ -612,7 +627,8 @@ export class SourceSelector extends React.Component<
 		image.name = image.description || image.name;
 		const imagePath = image.path || image.displayName || '';
 		const imageBasename = path.basename(imagePath);
-		const imageName = image.name || '';
+		// const imageName = image.name || '';
+		const imageName = this.state.imageName || "";
 		const imageSize = image.size;
 		const imageLogo = image.logo || '';
 
@@ -637,11 +653,11 @@ export class SourceSelector extends React.Component<
 						}}
 					/>
 
-					{selectionImage !== undefined || imageLoading ? (
+					{this.state.isImageSelected ? (
 						<>
 							<StepNameButton
 								plain
-								onClick={() => this.showSelectedImageDetails()}
+								onClick={() => null}
 								tooltip={imageName || imageBasename}
 							>
 								<Spinner show={imageLoading}>
@@ -652,7 +668,7 @@ export class SourceSelector extends React.Component<
 								<ChangeButton
 									plain
 									mb={14}
-									onClick={() => this.reselectSource()}
+									onClick={() => this.handleCancel()}
 								>
 									{i18next.t('cancel')}
 								</ChangeButton>

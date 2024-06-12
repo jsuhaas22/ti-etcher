@@ -179,6 +179,14 @@ export class MainPage extends React.Component<
 		});
 	}
 
+	clearPlatformsList = () => {
+		this.setState({
+			platforms: [],
+			hasImage: false,
+			platform: ''
+		});
+	}
+
 	private renderMain() {
 		const state = flashState.getFlashState();
 		const shouldDriveStepBeDisabled =
@@ -196,7 +204,7 @@ export class MainPage extends React.Component<
 			>
 				{notFlashingOrSplitView && (
 					<>
-						<SourceSelector flashing={this.state.isFlashing} toUpdate={this.updatePlatformsList} />
+						<SourceSelector flashing={this.state.isFlashing} toUpdate={this.updatePlatformsList} toClear={this.clearPlatformsList} />
 						<Flex>
 							<StepBorder disabled={shouldDriveStepBeDisabled} left />
 						</Flex>
