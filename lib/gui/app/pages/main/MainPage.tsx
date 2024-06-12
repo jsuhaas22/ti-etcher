@@ -47,6 +47,8 @@ import { FlashStep } from './Flash';
 import EtcherSvg from '../../../assets/etcher.svg';
 import { SafeWebview } from '../../components/safe-webview/safe-webview';
 
+import { ImageSelectorDropdown } from '../../components/image-selector/image-selector';
+
 const Icon = styled(BaseIcon)`
 	margin-right: 20px;
 `;
@@ -113,6 +115,8 @@ interface MainPageState {
 	isWebviewShowing: boolean;
 	hideSettings: boolean;
 	featuredProjectURL?: string;
+	platforms: string[];
+	platform: string;
 }
 
 export class MainPage extends React.Component<
@@ -126,6 +130,8 @@ export class MainPage extends React.Component<
 			isWebviewShowing: false,
 			hideSettings: true,
 			...this.stateHelper(),
+			platforms: [],
+			platform: ''
 		};
 	}
 
@@ -160,29 +166,49 @@ export class MainPage extends React.Component<
 		this.setState({ featuredProjectURL: await this.getFeaturedProjectURL() });
 	}
 
+	updatePlatformsList = (platformList: string[]) => {
+		this.setState({
+			platforms: platformList,
+			hasImage: true
+		});
+	}
+
+	updatePlatform = (plt: string) => {
+		this.setState({
+			platform: plt
+		});
+	}
+
+	clearPlatformsList = () => {
+		this.setState({
+			platforms: [],
+			hasImage: false,
+			platform: ''
+		});
+	}
+
 	private renderMain() {
 		const state = flashState.getFlashState();
-		const shouldDriveStepBeDisabled = !this.state.hasImage;
+		const shouldDriveStepBeDisabled =
+			!(this.state.hasImage &&
+				(this.state.platform !== undefined && this.state.platform !== ''));
 		const shouldFlashStepBeDisabled =
 			!this.state.hasImage || !this.state.hasDrive;
 		const notFlashingOrSplitView =
 			!this.state.isFlashing || !this.state.isWebviewShowing;
 		return (
+			<>
 			<Flex
 				m={`110px ${this.state.isWebviewShowing ? 35 : 55}px`}
 				justifyContent="space-between"
 			>
 				{notFlashingOrSplitView && (
 					<>
-						<SourceSelector flashing={this.state.isFlashing} />
+						<SourceSelector flashing={this.state.isFlashing} toUpdate={this.updatePlatformsList} toClear={this.clearPlatformsList} />
 						<Flex>
 							<StepBorder disabled={shouldDriveStepBeDisabled} left />
 						</Flex>
-						<TargetSelector
-							disabled={shouldDriveStepBeDisabled}
-							hasDrive={this.state.hasDrive}
-							flashing={this.state.isFlashing}
-						/>
+						<ImageSelectorDropdown disabled={!this.state.hasImage} platformsList={this.state.platforms} onSelect={(plt: string) => this.updatePlatform(plt)} />
 						<Flex>
 							<StepBorder disabled={shouldFlashStepBeDisabled} right />
 						</Flex>
@@ -235,21 +261,29 @@ export class MainPage extends React.Component<
 						}}
 					/>
 				)}
-
-				<FlashStep
-					width={this.state.isWebviewShowing ? '220px' : '200px'}
-					goToSuccess={() => this.setState({ current: 'success' })}
-					shouldFlashStepBeDisabled={shouldFlashStepBeDisabled}
-					isFlashing={this.state.isFlashing}
-					step={state.type}
-					percentage={state.percentage}
-					position={state.position}
-					failed={state.failed}
-					speed={state.speed}
-					eta={state.eta}
-					style={{ zIndex: 1 }}
-				/>
+				<TargetSelector
+							disabled={shouldDriveStepBeDisabled}
+							hasDrive={this.state.hasDrive}
+							flashing={this.state.isFlashing}
+						/>
 			</Flex>
+
+			<Flex alignItems="center" justifyContent="center">
+				<FlashStep
+						width={this.state.isWebviewShowing ? '220px' : '200px'}
+						goToSuccess={() => this.setState({ current: 'success' })}
+						shouldFlashStepBeDisabled={shouldFlashStepBeDisabled}
+						isFlashing={this.state.isFlashing}
+						step={state.type}
+						percentage={state.percentage}
+						position={state.position}
+						failed={state.failed}
+						speed={state.speed}
+						eta={state.eta}
+						style={{ zIndex: 1 }}
+					/>
+			</Flex>
+			</>
 		);
 	}
 

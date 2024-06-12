@@ -80,7 +80,7 @@ const translation = {
 			windowsImage: '這可能是 Windows 系統映像檔',
 			partitionTable: '找不到分割表',
 			errorOpen: '打開來源映像檔時出錯',
-			fromFile: '從檔案燒錄',
+			selectTar: '從檔案燒錄',
 			fromURL: '從網址燒錄',
 			clone: '再製磁碟',
 			image: '映像檔訊息',

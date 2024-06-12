@@ -26,7 +26,10 @@ import { uniqBy, isNil } from 'lodash';
 import * as path from 'path';
 import prettyBytes from 'pretty-bytes';
 import * as React from 'react';
-import { requestMetadata } from '../../app';
+// import { requestMetadata } from '../../app';
+import * as fs from 'fs';
+import * as zlib from 'zlib';
+import * as tar from 'tar-stream';
 
 import type { ButtonProps } from 'rendition';
 import {
@@ -64,7 +67,7 @@ import { SVGIcon } from '../svg-icon/svg-icon';
 import ImageSvg from '../../../assets/image.svg';
 import SrcSvg from '../../../assets/src.svg';
 import { DriveSelector } from '../drive-selector/drive-selector';
-import type { DrivelistDrive } from '../../../../shared/drive-constraints';
+// import type { DrivelistDrive } from '../../../../shared/drive-constraints';
 import { isJson } from '../../../../shared/utils';
 import type {
 	SourceMetadata,
@@ -138,6 +141,43 @@ function getState() {
 
 function isString(value: any): value is string {
 	return typeof value === 'string';
+}
+
+async function openTarGzReadJSON(tarFilePath: string) {
+	return new Promise<string[]>((resolve, reject) => {
+		const extract = tar.extract();
+		let contents = '';
+
+		extract.on('entry', (header, stream, next) => {
+			if (header.name.endsWith('platform.json')) {
+				stream.on('data', chunk => {
+					contents += chunk.toString();
+				});
+
+				stream.on('end', () => {
+					next();
+				});
+			} else {
+				stream.resume();
+				next();
+			}
+		});
+
+		extract.on('finish', () => {
+			if (contents) {
+				try {
+					const platformList: string[] = JSON.parse(contents);
+					resolve(platformList);
+				} catch(err: any) {
+					reject(new Error('Error parsing JSON content: ', err.message));
+				}
+			} else {
+				reject(new Error('platform.json not found'));
+			}
+		});
+
+		fs.createReadStream(tarFilePath).pipe(zlib.createGunzip()).pipe(extract);
+	});
 }
 
 const URLSelector = ({
@@ -308,6 +348,8 @@ const FlowSelector = styled(
 
 interface SourceSelectorProps {
 	flashing: boolean;
+	toUpdate: (platformLists: string[]) => void;
+	toClear: () => void;
 }
 
 interface SourceSelectorState {
@@ -321,6 +363,7 @@ interface SourceSelectorState {
 	defaultFlowActive: boolean;
 	imageSelectorOpen: boolean;
 	imageLoading: boolean;
+	isImageSelected: boolean;
 }
 
 export class SourceSelector extends React.Component<
@@ -340,6 +383,7 @@ export class SourceSelector extends React.Component<
 			defaultFlowActive: true,
 			imageSelectorOpen: false,
 			imageLoading: false,
+			isImageSelected: false
 		};
 
 		// Bind `this` since it's used in an event's callback
@@ -384,106 +428,89 @@ export class SourceSelector extends React.Component<
 		selectionState.deselectImage();
 	}
 
+	private handleCancel() {
+		this.props.toClear();
+		this.setState({
+			isImageSelected: false,
+			imageName: ''
+		});
+	}
+
 	private selectSource(
-		selected: string | DrivelistDrive,
-		SourceType: Source,
-		auth?: Authentication,
+		selected: string,
+		// SourceType: Source,
+		// auth?: Authentication,
 	): { promise: Promise<void>; cancel: () => void } {
 		return {
 			cancel: () => {
 				// noop
 			},
 			promise: (async () => {
-				const sourcePath = isString(selected) ? selected : selected.device;
-				let metadata: SourceMetadata | undefined;
-				if (isString(selected)) {
-					if (
-						SourceType === 'Http' &&
-						!isURL(this.normalizeImagePath(selected))
-					) {
-						this.handleError(
-							i18next.t('source.unsupportedProtocol'),
-							selected,
-							messages.error.unsupportedProtocol(),
-						);
-						return;
-					}
-
-					if (supportedFormats.looksLikeWindowsImage(selected)) {
-						analytics.logEvent('Possibly Windows image', { image: selected });
-						this.setState({
-							warning: {
-								message: messages.warning.looksLikeWindowsImage(),
-								title: i18next.t('source.windowsImage'),
-							},
-						});
-					}
-
+				// let metadata: SourceMetadata | undefined;
+				if (selected.endsWith('.tar.gz')) {
 					try {
+						openTarGzReadJSON(selected).then(platformList => {
+							this.props.toUpdate(platformList);
+						});
+						this.setState({
+							isImageSelected: true,
+							imageName: selected
+						});
+
 						// this will send an event down the ipcMain asking for metadata
 						// we'll get the response through an event
 
 						// FIXME: This is a poor man wait while loading to prevent a potential race condition without completely blocking the interface
 						// This should be addressed when refactoring the GUI
-						let retriesLeft = 10;
-						while (requestMetadata === undefined && retriesLeft > 0) {
-							await new Promise((resolve) => setTimeout(resolve, 1050)); // api is trying to connect every 1000, this is offset to make sure we fall between retries
-							retriesLeft--;
-						}
+						// let retriesLeft = 10;
+						// while (requestMetadata === undefined && retriesLeft > 0) {
+						// 	await new Promise((resolve) => setTimeout(resolve, 1050)); // api is trying to connect every 1000, this is offset to make sure we fall between retries
+						// 	retriesLeft--;
+						// }
 
-						metadata = await requestMetadata({ selected, SourceType, auth });
+						// metadata = await requestMetadata({ selected, SourceType, auth });
 
-						if (!metadata?.hasMBR && this.state.warning === null) {
-							analytics.logEvent('Missing partition table', { metadata });
-							this.setState({
-								warning: {
-									message: messages.warning.missingPartitionTable(),
-									title: i18next.t('source.partitionTable'),
-								},
-							});
-						}
+						// if (!metadata?.hasMBR && this.state.warning === null) {
+						// 	analytics.logEvent('Missing partition table', { metadata });
+						// 	this.setState({
+						// 		warning: {
+						// 			message: messages.warning.missingPartitionTable(),
+						// 			title: i18next.t('source.partitionTable'),
+						// 		},
+						// 	});
+						// }
 					} catch (error: any) {
 						this.handleError(
 							i18next.t('source.errorOpen'),
-							sourcePath,
-							messages.error.openSource(sourcePath, error.message),
+							selected,
+							messages.error.openSource(selected, error.message),
 							error,
 						);
 					}
 				} else {
-					if (selected.partitionTableType === null) {
-						analytics.logEvent('Missing partition table', { selected });
-						this.setState({
-							warning: {
-								message: messages.warning.driveMissingPartitionTable(),
-								title: i18next.t('source.partitionTable'),
-							},
-						});
-					}
-					metadata = {
-						path: selected.device,
-						displayName: selected.displayName,
-						description: selected.displayName,
-						size: selected.size as SourceMetadata['size'],
-						SourceType: 'BlockDevice',
-						drive: selected,
-					};
-				}
-
-				if (metadata !== undefined) {
-					metadata.auth = auth;
-					metadata.SourceType = SourceType;
-					selectionState.selectSource(metadata);
-					analytics.logEvent('Select image', {
-						// An easy way so we can quickly identify if we're making use of
-						// certain features without printing pages of text to DevTools.
-						image: {
-							...metadata,
-							logo: Boolean(metadata.logo),
-							blockMap: Boolean(metadata.blockMap),
+					analytics.logEvent('Not a tar.xz file', { selected });
+					this.setState({
+						warning: {
+							message: messages.warning.driveMissingPartitionTable(),
+							title: i18next.t('source.partitionTable'),
 						},
 					});
 				}
+
+				// if (metadata !== undefined) {
+				// 	metadata.auth = auth;
+				// 	metadata.SourceType = SourceType;
+				// 	selectionState.selectSource(metadata);
+				// 	analytics.logEvent('Select image', {
+				// 		// An easy way so we can quickly identify if we're making use of
+				// 		// certain features without printing pages of text to DevTools.
+				// 		image: {
+				// 			...metadata,
+				// 			logo: Boolean(metadata.logo),
+				// 			blockMap: Boolean(metadata.blockMap),
+				// 		},
+				// 	});
+				// }
 			})(),
 		};
 	}
@@ -600,7 +627,8 @@ export class SourceSelector extends React.Component<
 		image.name = image.description || image.name;
 		const imagePath = image.path || image.displayName || '';
 		const imageBasename = path.basename(imagePath);
-		const imageName = image.name || '';
+		// const imageName = image.name || '';
+		const imageName = this.state.imageName || "";
 		const imageSize = image.size;
 		const imageLogo = image.logo || '';
 
@@ -625,11 +653,11 @@ export class SourceSelector extends React.Component<
 						}}
 					/>
 
-					{selectionImage !== undefined || imageLoading ? (
+					{this.state.isImageSelected ? (
 						<>
 							<StepNameButton
 								plain
-								onClick={() => this.showSelectedImageDetails()}
+								onClick={() => null}
 								tooltip={imageName || imageBasename}
 							>
 								<Spinner show={imageLoading}>
@@ -640,7 +668,7 @@ export class SourceSelector extends React.Component<
 								<ChangeButton
 									plain
 									mb={14}
-									onClick={() => this.reselectSource()}
+									onClick={() => this.handleCancel()}
 								>
 									{i18next.t('cancel')}
 								</ChangeButton>
@@ -654,31 +682,11 @@ export class SourceSelector extends React.Component<
 							<FlowSelector
 								disabled={this.state.imageSelectorOpen}
 								primary={this.state.defaultFlowActive}
-								key="Flash from file"
+								key="Select tar file"
 								flow={{
 									onClick: () => this.openImageSelector(),
-									label: i18next.t('source.fromFile'),
+									label: i18next.t('source.selectTar'),
 									icon: <FileSvg height="1em" fill="currentColor" />,
-								}}
-								onMouseEnter={() => this.setDefaultFlowActive(false)}
-								onMouseLeave={() => this.setDefaultFlowActive(true)}
-							/>
-							<FlowSelector
-								key="Flash from URL"
-								flow={{
-									onClick: () => this.openURLSelector(),
-									label: i18next.t('source.fromURL'),
-									icon: <LinkSvg height="1em" fill="currentColor" />,
-								}}
-								onMouseEnter={() => this.setDefaultFlowActive(false)}
-								onMouseLeave={() => this.setDefaultFlowActive(true)}
-							/>
-							<FlowSelector
-								key="Clone drive"
-								flow={{
-									onClick: () => this.openDriveSelector(),
-									label: i18next.t('source.clone'),
-									icon: <CopySvg height="1em" fill="currentColor" />,
 								}}
 								onMouseEnter={() => this.setDefaultFlowActive(false)}
 								onMouseLeave={() => this.setDefaultFlowActive(true)}
